@@ -1,0 +1,356 @@
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  urlcolor=blue!60!black,
+  pdftitle={Compte-rendu du TP 1 -- Mes tâches},
+  pdfauthor={Membres du binôme},
+  pdfsubject={HAI912I -- Fondamentaux de Dart et Flutter}
+}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{setspace}
+\usepackage{array}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric}
+
+\onehalfspacing
+\emergencystretch=3em
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{2}
+
+\definecolor{bleufonce}{RGB}{31,67,112}
+\definecolor{grisclair}{RGB}{245,247,250}
+\definecolor{vertfonce}{RGB}{35,112,72}
+
+\lstdefinelanguage{Dart}{
+  morekeywords={abstract,as,assert,async,await,break,case,catch,class,continue,
+    const,default,deferred,do,dynamic,else,enum,export,extends,extension,external,
+    factory,false,final,finally,for,Function,get,hide,if,implements,import,in,
+    interface,is,late,mixin,new,null,on,operator,part,rethrow,return,set,show,
+    static,super,switch,sync,this,throw,true,try,var,void,while,with,yield,sealed},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]',
+  morestring=[b]"
+}
+\lstdefinestyle{dart}{
+  language=Dart,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{bleufonce}\bfseries,
+  commentstyle=\color{gray!75},
+  stringstyle=\color{vertfonce},
+  showstringspaces=false,
+  frame=single,
+  rulecolor=\color{gray!35},
+  columns=fullflexible,
+  tabsize=2,
+  breaklines=true,
+  keepspaces=true,
+  literate={é}{{\'e}}1 {è}{{\`e}}1 {ê}{{\^e}}1 {à}{{\`a}}1
+    {ù}{{\`u}}1 {ç}{{\c c}}1 {É}{{\'E}}1 {À}{{\`A}}1
+}
+\lstset{style=dart}
+
+% Signale les captures encore à insérer, sans empêcher la compilation du rapport.
+\newcommand{\capture}[2]{%
+  \begin{figure}[H]
+    \centering
+    \IfFileExists{#1}{\includegraphics[width=0.88\textwidth]{#1}}{%
+      \fcolorbox{bleufonce}{grisclair}{\parbox[c][4.2cm][c]{0.82\textwidth}{%
+        \centering\large Capture à ajouter\\[0.5em]
+        \normalsize\texttt{\detokenize{#1}}\\[0.4em]
+        \small #2}}}
+    \caption{#2}
+  \end{figure}%
+}
+
+\begin{document}
+
+\begin{titlepage}
+  \centering
+  \vspace*{1.2cm}
+  {\Large Université de Montpellier\\Faculté des Sciences\par}
+  \vspace{1.4cm}
+  {\large HAI912I -- Développement mobile avancé, IoT et embarqué\par}
+  \vspace{0.4cm}
+  {\large TP 1 -- Fondamentaux de Dart et Flutter\par}
+  \vspace{1.5cm}
+  {\Huge\bfseries Compte-rendu\par}
+  \vspace{0.5cm}
+  {\LARGE Application « Mes tâches »\par}
+  \vspace{1.4cm}
+  \begin{tabular}{>{\bfseries}p{4.2cm}p{9cm}}
+    Enseignant & Bachar Rima\\
+    Année universitaire & 2026--2027\\
+    Séances & \textcolor{red!70!black}{À compléter : dates des séances}\\
+    Membre 1 & \textcolor{red!70!black}{À compléter : prénom, nom, numéro étudiant, parcours}\\
+    Membre 2 & \textcolor{red!70!black}{À compléter ou supprimer si travail individuel}\\
+  \end{tabular}
+  \vfill
+  \textbf{Dépôt Git :} \textcolor{red!70!black}{À compléter si un dépôt est utilisé}
+  \vspace{0.8cm}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+\chapter{Introduction et objectifs}
+
+« Mes tâches » est une application de gestion de tâches personnelles développée en Flutter pour le TP 1. Elle charge des tâches d’exemple fournies au format JSON et permet de les consulter, de filtrer la liste, de changer leur état, d’ouvrir leur détail et d’en créer de nouvelles avec un formulaire validé. Les données sont conservées en mémoire pendant la session et sont réinitialisées au redémarrage, conformément au périmètre demandé.
+
+Le travail met en pratique un modèle Dart typé et immuable, les classes scellées et les records, la composition de widgets, l’état local avec \texttt{setState}, la navigation avec résultat, la validation d’un formulaire ainsi que les tests unitaires et de widgets. Le code est organisé entre le modèle, les écrans et un widget de tuile réutilisable.
+
+\chapter{Réponses étape par étape}
+
+Cette partie décrit les choix réalisés et les preuves disponibles pour les étapes A1 à F2. Les tests mentionnés correspondent aux tests présents dans \texttt{mes\_taches/test/}. Les captures de démonstration restent à insérer aux emplacements indiqués ; elles doivent provenir de l’application réellement exécutée.
+
+\section{A1 -- Modèle Dart et lecture JSON}
+
+Le modèle est défini dans \texttt{lib/modele/taches.dart}, sans dépendance à Flutter. \texttt{Priorite} est un enum enrichi avec les valeurs basse, normale et haute. \texttt{Echeance} est une classe scellée avec trois cas : absence d’échéance, date précise et échéance hebdomadaire. \texttt{Tache} est immuable : ses propriétés sont finales et \texttt{copyWith} construit une nouvelle tâche tout en conservant son identifiant.
+
+La conversion JSON vérifie les champs obligatoires, les types, les codes de priorité et la validité stricte des dates. Une donnée incorrecte déclenche une \texttt{FormatException}; les clés supplémentaires ne changent pas la conversion. Ce choix rend les erreurs d’entrée explicites et permet au modèle de rester indépendant de l’interface.
+
+\textbf{Preuve :} les tests unitaires couvrent les codes de priorité, les objets JSON valides et invalides, les types incorrects, les champs manquants et les dates impossibles.
+
+\section{A2 -- Échéances et retards}
+
+La fonction \texttt{libelleEcheance} utilise un \texttt{switch} exhaustif sur les sous-types de \texttt{Echeance}. Les échéances datées sont normalisées au jour civil lors de la construction du modèle. \texttt{estEnRetard} compare les jours calendaires : une tâche terminée ou hebdomadaire n’est pas considérée en retard.
+
+\textbf{Preuve :} les tests couvrent une échéance passée, le jour même à des heures différentes, une tâche terminée, une tâche sans échéance et une échéance hebdomadaire.
+
+\section{A3 -- Bilan et tâches à faire}
+
+\texttt{bilan} renvoie un record nommé \texttt{(faites, total)}. \texttt{aFaire} construit une nouvelle liste contenant les tâches non terminées dont la priorité atteint le seuil demandé, puis les trie par priorité décroissante et par titre croissant. L’itérable reçu n’est pas modifié.
+
+\textbf{Preuve :} les tests unitaires vérifient les collections vide et non vide, le seuil de priorité, l’ordre obtenu et la conservation de la collection initiale.
+
+\section{B1 -- Premier écran et état local}
+
+\texttt{ListeTachesEcran} charge \texttt{tachesExempleJson} dans \texttt{initState}. Son objet \texttt{State} possède la liste en mémoire et le filtre courant. Les changements d’état sont appliqués avec \texttt{setState}. Un rechargement à chaud conserve l’instance de \texttt{State} existante ; un redémarrage relance l’initialisation et relit les tâches d’exemple. Ces comportements découlent du cycle de vie Flutter ; le poste de référence ne disposant pas de Chrome, la démonstration manuelle des touches \texttt{r} et \texttt{R} reste à faire dans un environnement équipé.
+
+\textbf{Preuve disponible :} tests de widget des interactions et test de démarrage conservé. La démonstration des deux gestes de rechargement est à enregistrer dans la vidéo.
+
+\section{B2 -- Cocher une tâche}
+
+La tuile transmet l’action à l’écran de liste. Celui-ci crée une tâche remplacée avec \texttt{copyWith(faite: ...)} et met à jour la liste dans \texttt{setState}. Aucune propriété de la tâche n’est mutée directement. Cette transition explicite préserve le caractère immuable du modèle.
+
+\textbf{Preuve :} un test de widget vérifie le passage immédiat du compteur « 5 à faire » à « 4 à faire » après le cochage.
+
+\section{C1 -- Filtrer la liste}
+
+Le filtre sélectionné appartient à l’état de l’écran principal. Les tâches visibles et le compteur sont calculés à partir de la liste source ; la liste filtrée n’est pas maintenue dans un second état. Le compteur reste global, quel que soit le filtre actif.
+
+\textbf{Preuve :} les tests de widgets vérifient le fonctionnement du filtre « Faites » et la stabilité du compteur global.
+
+\section{C2 -- Tuile réutilisable et échéances}
+
+\texttt{TuileTache} est un \texttt{StatelessWidget}. Elle reçoit la tâche, la date du jour et les rappels permettant de la cocher ou d’ouvrir son détail. Elle affiche le titre, la priorité et l’échéance ; une tâche faite est barrée et une tâche en retard est mise en évidence. L’écran calcule la date une fois lors du rendu et la transmet, ce qui rend cette dépendance explicite.
+
+\textbf{Preuve :} les tests unitaires valident la logique d’échéance et de retard ; les tests de widget couvrent les interactions de la tuile. Une capture réelle de tâche en retard reste à ajouter.
+
+\section{C3 -- Mise en page et cas limites}
+
+L’en-tête avec compteur et filtres reste fixe dans une \texttt{Column}; la liste occupe l’espace restant grâce à \texttt{Expanded}. Les titres longs sont limités à une ligne avec ellipse. Un message adapté au filtre est affiché lorsque la liste est vide.
+
+\textbf{Preuve disponible :} un test de widget utilise une largeur de 360 pixels. La vérification visuelle aux différentes largeurs, notamment 360 et 1\,280 pixels, ainsi que la capture correspondante sont à effectuer sur navigateur.
+
+\section{D1--D2 -- Détail et navigation avec résultat}
+
+La tâche sélectionnée est transmise à \texttt{DetailTacheEcran}, qui affiche ses informations, sa note (ou l’absence de note), son état et son éventuel retard. Le bouton d’action ferme l’écran en renvoyant une tâche immuable modifiée. Après le \texttt{await}, l’écran de liste vérifie \texttt{mounted}, puis remplace l’élément par identifiant. Le résultat de navigation convient ici à une modification ponctuelle et laisse à l’écran principal la responsabilité unique de la liste.
+
+\textbf{Preuve :} un test de widget ouvre une tâche dans le filtre « À faire », la coche depuis le détail, puis vérifie qu’elle disparaît de ce filtre et apparaît dans « Faites ».
+
+\section{E1--E2 -- Création et validation du formulaire}
+
+Le formulaire recueille le titre, la priorité, l’échéance et une note multiligne. L’identifiant est généré par l’écran propriétaire à partir d’une séquence, puis contrôlé contre les identifiants déjà présents. Le titre est obligatoire après suppression des espaces périphériques et limité à 60 caractères ; la note est limitée à 200 caractères ; une échéance ne peut pas précéder aujourd’hui. À l’enregistrement, les espaces du titre sont retirés et une note vide devient \texttt{null}. Une saisie invalide garde le formulaire ouvert ; un retour sans enregistrement ne modifie pas la liste.
+
+\textbf{Preuve :} les tests couvrent le titre vide, le titre trop long, la note trop longue, la création, la normalisation de la note et le retour arrière. Une capture de validation invalide et une capture de création réussie restent à ajouter.
+
+\section{F1--F2 -- Tests et qualité}
+
+Les tests unitaires du modèle et les tests de widgets sont regroupés dans \texttt{test/}. La vérification consignée pour le projet indique 29 tests réussis, une analyse statique sans problème, la mise en forme par \texttt{dart format lib test} et une compilation Web réussie.
+
+\textbf{Preuve :} les sorties des commandes \texttt{flutter analyze}, \texttt{flutter test} et \texttt{flutter build web} sont à joindre en capture ou à reproduire pendant la démonstration. Les résultats déclarés correspondent à l’état actuel du projet.
+
+\section{Bonus G1--G4}
+
+Aucun des bonus G1 à G4 n’est implémenté dans cette version : modification d’une tâche, suppression avec annulation, tri et regroupement, et mise en page adaptative liste-détail. Ils ne sont donc pas revendiqués.
+
+\chapter{Conception et diagrammes}
+
+\section{Diagramme de classes du modèle}
+
+Le modèle sépare la tâche de ses valeurs métier. Les échéances partagent une classe scellée, permettant un traitement exhaustif des variantes. Les objets sont immuables et les changements produisent une nouvelle valeur.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  classbox/.style={draw=bleufonce,rounded corners,fill=grisclair,
+    text width=4.0cm,align=left,inner sep=7pt,font=\small},
+  relation/.style={-{Stealth[length=2.2mm]},thick,draw=bleufonce},
+  node distance=1.0cm and 1.3cm
+]
+  \node[classbox] (tache) {\textbf{Tache}\\\rule{3.5cm}{0.3pt}\\id : String\\titre : String\\priorite : Priorite\\echeance : Echeance\\note : String?\\faite : bool\\\rule{3.5cm}{0.3pt}\\copyWith(...)};
+  \node[classbox,below left=1.3cm and 0.5cm of tache] (priorite) {\textbf{Priorite} (enum)\\basse\\normale\\haute};
+  \node[classbox,below right=1.3cm and 0.5cm of tache] (echeance) {\textbf{Echeance} (sealed)};
+  \node[classbox,below left=1.0cm and -0.2cm of echeance] (sans) {\textbf{SansEcheance}};
+  \node[classbox,below=1.0cm of echeance] (datee) {\textbf{EcheanceDatee}\\date : DateTime};
+  \node[classbox,below right=1.0cm and -0.2cm of echeance] (hebdo) {\textbf{EcheanceHebdomadaire}\\jourSemaine : int};
+  \draw[relation] (tache) -- node[left,font=\scriptsize]{priorite} (priorite);
+  \draw[relation] (tache) -- node[right,font=\scriptsize]{échéance} (echeance);
+  \draw[relation] (echeance) -- (sans);
+  \draw[relation] (echeance) -- (datee);
+  \draw[relation] (echeance) -- (hebdo);
+\end{tikzpicture}
+}%
+\caption{Principaux types du modèle Dart.}
+\end{figure}
+
+\section{État, widgets et propagation des changements}
+
+La liste \texttt{_taches} et le filtre actif sont les seules informations modifiables détenues par \texttt{ListeTachesEcran}. Le nombre de tâches à faire et la liste visible sont dérivés de ces valeurs. \texttt{TuileTache} ne possède pas d’état : elle reçoit une tâche et des rappels. Le détail reçoit une tâche et renvoie la tâche modifiée par le résultat de navigation ; le formulaire renvoie une nouvelle tâche, ou rien en cas d’annulation.
+
+Lorsqu’une tâche change, l’écran propriétaire remplace l’élément identifié puis appelle \texttt{setState}. Flutter reconstruit alors les widgets concernés depuis la liste source. Cette organisation évite de maintenir plusieurs copies de la tâche ou de la liste.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  screen/.style={draw=bleufonce,rounded corners,fill=grisclair,
+    align=center,text width=3.5cm,minimum height=1.25cm,font=\small},
+  flow/.style={-{Stealth[length=2.5mm]},thick,draw=bleufonce},
+  node distance=2.0cm and 1.5cm
+]
+  \node[screen] (liste) {\textbf{ListeTachesEcran}\\liste + filtre};
+  \node[screen,below left=of liste] (detail) {\textbf{DetailTacheEcran}\\consultation / action};
+  \node[screen,below right=of liste] (form) {\textbf{FormulaireTacheEcran}\\création / validation};
+  \node[screen,right=2.0cm of liste] (tuile) {\textbf{TuileTache}\\sans état};
+  \draw[flow] (liste) -- node[left,font=\scriptsize,align=right]{tâche} (detail);
+  \draw[flow] (detail) -- node[right,font=\scriptsize,align=left]{tâche modifiée\\ou annulation} (liste);
+  \draw[flow] (liste) -- node[right,font=\scriptsize,align=left]{identifiant} (form);
+  \draw[flow] (form) -- node[left,font=\scriptsize,align=right]{nouvelle tâche\\ou annulation} (liste);
+  \draw[flow] (liste) -- node[above,font=\scriptsize]{données + rappels} (tuile);
+  \draw[flow] (tuile) to[bend left=22] node[below,font=\scriptsize]{événement} (liste);
+\end{tikzpicture}
+}%
+\caption{État centralisé dans l’écran de liste et échanges entre écrans.}
+\end{figure}
+
+\section{Arbre simplifié de l’écran de liste}
+
+\begin{lstlisting}[basicstyle=\ttfamily\small,frame=single]
+Scaffold
+|-- AppBar
+|-- Column
+|   |-- compteur global
+|   |-- SegmentedButton (filtre)
+|   `-- Expanded
+|       |-- message si la liste est vide
+|       `-- ListView.builder
+|           `-- TuileTache (Card / ListTile / Checkbox)
+`-- FloatingActionButton (Ajouter)
+\end{lstlisting}
+
+L’utilisation de \texttt{Expanded} borne la hauteur de la liste dans la colonne. Les contrôles et le compteur restent visibles pendant le défilement.
+
+\chapter{Extraits de code}
+
+\section{Mise à jour immuable d’une tâche}
+
+\begin{lstlisting}
+void _basculer(Tache tache) =>
+    _remplacer(tache.copyWith(faite: !tache.faite));
+
+void _remplacer(Tache nouvelle) {
+  setState(() {
+    final index = _taches.indexWhere(
+      (tache) => tache.id == nouvelle.id,
+    );
+    if (index >= 0) _taches[index] = nouvelle;
+  });
+}
+\end{lstlisting}
+
+Cet extrait montre que l’objet tâche n’est jamais modifié sur place. L’écran trouve son emplacement par identifiant, remplace la valeur et déclenche la reconstruction avec \texttt{setState}.
+
+\section{Navigation avec résultat et contrôle de durée de vie}
+
+\begin{lstlisting}
+final resultat = await Navigator.of(context).push<Tache>(
+  MaterialPageRoute(
+    builder: (_) => DetailTacheEcran(tache: tache),
+  ),
+);
+if (!mounted) return;
+if (resultat != null) _remplacer(resultat);
+\end{lstlisting}
+
+La navigation transmet la tâche à l’écran de détail et attend son résultat. Le contrôle de \texttt{mounted} protège l’écran appelant si celui-ci a été retiré pendant l’attente.
+
+\chapter{Résultats et vérification}
+
+\section{Bilan technique}
+
+\begin{itemize}
+  \item Environnement consigné : Ubuntu 24.04.3 LTS, Flutter 3.47.5 stable et Dart 3.13.4.
+  \item \texttt{flutter analyze} : aucun problème signalé.
+  \item \texttt{flutter test} : 29 tests réussis.
+  \item \texttt{flutter build web} : compilation réussie.
+  \item \texttt{dart format lib test} : mise en forme appliquée.
+\end{itemize}
+
+Le projet a été compilé pour le Web, mais n’a pas été lancé dans Chrome sur le poste de référence, car aucun navigateur Chrome n’y était disponible. Le SDK Android n’était pas installé : aucune exécution Android ni compilation APK n’a donc été réalisée. Flutter Desktop Linux était détecté, mais le bureau Linux n’est pas la cible obligatoire du TP.
+
+\section{Captures à intégrer}
+
+Les cadres suivants sont des repères de mise en page, pas des preuves d’exécution. Remplacer les fichiers suggérés par des captures prises sur la version finale du projet avant d’exporter le PDF.
+
+\capture{captures/liste-taches.png}{Écran principal avec compteur, filtres et liste.}
+\capture{captures/tache-en-retard.png}{Mise en évidence d’une tâche en retard.}
+\capture{captures/detail-tache.png}{Détail d’une tâche et action de changement d’état.}
+\capture{captures/formulaire-invalide.png}{Validation d’un formulaire invalide avec messages visibles.}
+\capture{captures/creation-tache.png}{Création réussie d’une tâche.}
+\capture{captures/ecran-etroit.png}{Liste sur un écran étroit, avec titre long et filtres.}
+
+\chapter{Difficultés et limites}
+
+Les vérifications d’exécution dans Chrome et sur Android n’ont pas pu être effectuées depuis le poste de référence, en raison de l’absence du navigateur Chrome et du SDK Android. La compilation Web et les tests automatisés ont néanmoins réussi. Il reste à réaliser une démonstration sur une plateforme équipée, à enregistrer la vidéo demandée et à capturer les parcours importants.
+
+Les tâches sont volatiles et ne sont pas sauvegardées ; c’est le comportement prévu pour ce TP. Les bonus G1 à G4 ne sont pas réalisés. Les informations des membres, les dates de séances et les liens de dépôt ou de vidéo doivent être complétés avant la remise.
+
+\chapter{Utilisation des outils d’intelligence artificielle}
+
+Codex (modèle GPT-6) a été utilisé comme assistant pour analyser les consignes, structurer et rédiger une partie du code et des tests, puis corriger les problèmes révélés par l’analyse et les tests. Il a également aidé à rédiger ce compte-rendu en LaTeX. Les résultats ont été vérifiés avec \texttt{flutter analyze}, \texttt{flutter test} et \texttt{flutter build web}. Les membres du projet restent responsables du code rendu, de leurs choix de conception et de leur capacité à expliquer les fichiers et les tests. Cette déclaration doit être complétée si d’autres outils d’IA ont été utilisés.
+
+\chapter{Améliorations possibles}
+
+Dans les travaux suivants, les données en mémoire pourront être remplacées par le service REST et la persistance prévus par le sujet ultérieur. Pour prolonger l’application dans le cadre du TP 1, les évolutions possibles sont la modification et la suppression avec annulation, le tri et le regroupement des tâches, puis une présentation adaptative côte à côte de la liste et du détail. Ces améliorations devront être accompagnées de tests et montrées dans une démonstration.
+
+\chapter{Conclusion}
+
+Le périmètre fonctionnel obligatoire du TP 1 est implémenté : modèle Dart et lecture JSON, liste filtrable, suivi local de l’état, détail, navigation avec résultat, formulaire validé et tests. L’analyse statique, les 29 tests et la compilation Web sont réussis selon les vérifications consignées. La validation visuelle dans Chrome, l’essai Android lorsque l’environnement le permet, les captures et la vidéo restent à réaliser ou à joindre avant la remise finale.
+
+\chapter{Références}
+
+\begin{itemize}
+  \item Bachar Rima, \emph{HAI912I -- TP 1 : Fondamentaux de Dart et Flutter}, année universitaire 2026--2027, document de consignes fourni avec le projet.
+  \item Bachar Rima, \emph{HAI912I TP 1 -- Annexe : Flutter, workflow, widgets, navigation et débogage}, année universitaire 2026--2027.
+  \item \emph{Documentation Flutter}, \url{https://docs.flutter.dev/}, consultée le 20 novembre 2026.
+  \item \emph{Documentation du langage Dart}, \url{https://dart.dev/language}, consultée le 20 novembre 2026.
+\end{itemize}
+
+\end{document}
